@@ -4,6 +4,7 @@ let currentPlayer = 1; // 1 = Red, 2 = Yellow
 let gameOver = false;
 let moveCount = 0;
 let hoveredColumn = null;
+let moveInProgress = false; // Prevent extra clicks while the AI is thinking
 
 // DOM elements
 const boardEl = document.getElementById('board');
@@ -73,7 +74,7 @@ function setupHoverEvents() {
     
     document.querySelectorAll('.column').forEach(column => {
         column.addEventListener('mouseenter', function(e) {
-            if (gameOver) return;
+            if (gameOver || moveInProgress) return;
             const col = parseInt(this.dataset.col);
             showPreview(col);
         });
@@ -85,8 +86,8 @@ function setupHoverEvents() {
 }
 
 function showPreview(col) {
-    // No preview if game is over
-    if (gameOver) return;
+    // No preview if the game is over or the AI is thinking
+    if (gameOver || moveInProgress) return;
     
     clearPreview();
     
@@ -187,7 +188,14 @@ function loadGameState() {
 
 // Make a move
 function makeMove(col) {
-    if (gameOver) return;
+    if (gameOver || moveInProgress) return;
+
+    // Lock the board until Flask returns both the human and AI moves
+    moveInProgress = true;
+    resetBtn.disabled = true;
+    clearPreview();
+    turnText.textContent = 'AI is thinking...';
+    turnDot.className = 'dot yellow';
 
     fetch(`${API_URL}/api/move`, {
         method: 'POST',
@@ -216,11 +224,23 @@ function makeMove(col) {
     .catch(error => {
         console.error('Error making move:', error);
         alert('Failed to make move. Please try again.');
+    })
+    .finally(() => {
+        // Allow the human to click again after the request is complete
+        moveInProgress = false;
+        resetBtn.disabled = false;
+
+        if (!gameOver) {
+            turnText.textContent = "Red's turn";
+            turnDot.className = 'dot red';
+        }
     });
 }
 
 // Reset the game
 function resetGame() {
+    if (moveInProgress) return;
+
     fetch(`${API_URL}/api/reset`, {
         method: 'POST',
         headers: {
@@ -250,7 +270,7 @@ function resetGame() {
 function onBoardClick(e) {
     const cell = e.target.closest('.cell');
     if (!cell) return;
-    if (gameOver) return;
+    if (gameOver || moveInProgress) return;
     const col = parseInt(cell.dataset.col, 10);
     if (isNaN(col)) return;
     makeMove(col);
@@ -263,7 +283,7 @@ function init() {
     loadGameState();
 
     setInterval(() => {
-        if (!gameOver) {
+        if (!gameOver && !moveInProgress) {
             fetch(`${API_URL}/api/state`)
                 .then(response => response.json())
                 .then(data => {
