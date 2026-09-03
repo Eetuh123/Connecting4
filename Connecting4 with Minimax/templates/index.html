@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Connect Four - Python + Flask</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="game-container">
+        <div class="board-wrapper">
+            <h1 class="text-center">
+                <span class="dot red"></span> 
+                CONNECT 4
+                <span class="dot yellow"></span>
+            </h1>
+            <div id="board">
+                <div class="column" data-col="0">
+                    <div class="cell" data-row="0" data-col="0"></div>
+                    <div class="cell" data-row="1" data-col="0"></div>
+                    <div class="cell" data-row="2" data-col="0"></div>
+                    <div class="cell" data-row="3" data-col="0"></div>
+                    <div class="cell" data-row="4" data-col="0"></div>
+                    <div class="cell" data-row="5" data-col="0"></div>
+                </div>
+            </div>
+            <div class="status-bar">
+                <div id="turnIndicator">
+                    <span id="turnText">Connecting...</span>
+                    <span id="turnDot" class="dot empty"></span>
+                </div>
+                <button id="resetBtn">↺ New</button>
+            </div>
+            <div class="move-counter" id="moveCounter">Move 0</div>
+        </div>
+    </div>
+
+    <script src="/static/script.js"></script>
+</body>
+</html>
