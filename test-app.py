@@ -5,6 +5,7 @@ from flask_cors import CORS
 from ai import get_best_move
 
 app = Flask(__name__)
+app.config['TEMPLATES_AUTO_RELOAD'] = True
 CORS(app)
 
 # Game constants
@@ -14,13 +15,21 @@ EMPTY = 0
 RED = 1
 YELLOW = 2
 
+# SMARTer makes look further in future but very slow can be like 5.7 million search things
+DIFFICULTIES = {
+    'easy': 2,
+    'medium': 4,
+    'hard': 6
+}
+
 # Game state (in-memory for simplicity)
 game_state = {
     'board': [[EMPTY for _ in range(COLS)] for _ in range(ROWS)],
     'current_player': RED,
     'game_over': False,
     'winner': None,
-    'move_count': 0
+    'move_count': 0,
+    'difficulty': 'medium'
 }
 
 def reset_game():
@@ -88,8 +97,21 @@ def reset():
         'board': game_state['board'],
         'current_player': game_state['current_player'],
         'game_over': game_state['game_over'],
-        'winner': game_state['winner']
+        'winner': game_state['winner'],
+        'difficulty': game_state['difficulty']
     })
+
+@app.route('/api/difficulty', methods=['POST'])
+def set_difficulty():
+    """Make Ai SMARTer"""
+    data = request.get_json()
+    level = data.get('level')
+
+    if level not in DIFFICULTIES:
+        return jsonify({'error': 'Invalid difficulty level'}), 400
+
+    game_state['difficulty'] = level
+    return jsonify({'success': True, 'difficulty': level})
 
 @app.route('/api/move', methods=['POST'])
 def make_move():
@@ -137,8 +159,8 @@ def make_move():
     # After the human move, current_player is YELLOW. The board is sent to
     # get_best_move(), which uses Minimax to select a column for the AI.
     if not game_state['game_over'] and game_state['current_player'] == YELLOW:
-        ai_col = get_best_move(game_state['board'])
-
+        depth = DIFFICULTIES[game_state['difficulty']]
+        ai_col = get_best_move(game_state['board'], depth)
         if ai_col is not None:
             # Find the lowest empty row in the column selected by Minimax.
             ai_row = -1
@@ -172,7 +194,8 @@ def make_move():
         'current_player': game_state['current_player'],
         'game_over': game_state['game_over'],
         'winner': game_state['winner'],
-        'move_count': game_state['move_count']
+        'move_count': game_state['move_count'],
+        'difficulty': game_state['difficulty']
     })
 
 @app.route('/api/state', methods=['GET'])
@@ -183,9 +206,35 @@ def get_state():
         'current_player': game_state['current_player'],
         'game_over': game_state['game_over'],
         'winner': game_state['winner'],
-        'move_count': game_state['move_count']
+        'move_count': game_state['move_count'],
+        'difficulty': game_state['difficulty']
     })
 
 if __name__ == '__main__':
+    import os
+
     reset_game()
-    app.run(debug=True, port=5000)
+    port = int(os.environ.get('PORT', 5000))
+
+    try:
+        # In development, serve through livereload so the browser
+        # auto-refreshes whenever a template or static asset changes.
+        # Werkzeug's reloader (not livereload's own tornado.autoreload,
+        # which is unreliable on Windows) restarts the process on .py changes.
+        from livereload import Server
+        try:
+            from werkzeug.serving import run_with_reloader
+        except ImportError:
+            # Newer Werkzeug moved this to a private module.
+            from werkzeug._reloader import run_with_reloader
+
+        def _serve():
+            server = Server(app.wsgi_app)
+            server.watch('templates/*.html')
+            server.watch('static/*.css')
+            server.watch('static/*.js')
+            server.serve(port=port, host='127.0.0.1', debug=False)
+
+        run_with_reloader(_serve)
+    except ImportError:
+        app.run(debug=True, port=port)

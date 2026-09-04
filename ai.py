@@ -47,51 +47,39 @@ def make_move(board, col, player):
     for row in range(ROWS - 1, -1, -1):
         if new_board[row][col] == EMPTY:
             new_board[row][col] = player
-            break
+            return new_board, row
 
-    return new_board
+    return new_board, None
 
+def check_winner(board, row, col, player):
+    """Check whether the token just placed at (row, col) completed four in a row."""
+    directions = [(1, 0), (0, 1), (1, 1), (1, -1)]
 
-def check_winner(board, player):
-    """Check every direction to see if a player has four connected tokens."""
-    # Horizontal
-    for row in range(ROWS):
-        for col in range(COLS - 3):
-            if (board[row][col] == player and
-                    board[row][col + 1] == player and
-                    board[row][col + 2] == player and
-                    board[row][col + 3] == player):
-                return True
+    for dr, dc in directions:
+        count = 1
 
-    # Vertical
-    for row in range(ROWS - 3):
-        for col in range(COLS):
-            if (board[row][col] == player and
-                    board[row + 1][col] == player and
-                    board[row + 2][col] == player and
-                    board[row + 3][col] == player):
-                return True
+        for step in range(1, 4):
+            r = row + dr * step
+            c = col + dc * step
+            if r < 0 or r >= ROWS or c < 0 or c >= COLS:
+                break
+            if board[r][c] == player:
+                count += 1
+            else:
+                break
 
-    # Diagonal down-right
-    for row in range(ROWS - 3):
-        for col in range(COLS - 3):
-            if (board[row][col] == player and
-                    board[row + 1][col + 1] == player and
-                    board[row + 2][col + 2] == player and
-                    board[row + 3][col + 3] == player):
-                return True
+        for step in range(1, 4):
+            r = row - dr * step
+            c = col - dc * step
+            if r < 0 or r >= ROWS or c < 0 or c >= COLS:
+                break
+            if board[r][c] == player:
+                count += 1
+            else:
+                break
 
-    # Diagonal up-right
-    for row in range(3, ROWS):
-        for col in range(COLS - 3):
-            if (board[row][col] == player and
-                    board[row - 1][col + 1] == player and
-                    board[row - 2][col + 2] == player and
-                    board[row - 3][col + 3] == player):
-                return True
-
-    return False
-
+        if count >= 4:
+            return True
 
 def evaluate_window(window):
     #-----------------------------------------------------------------------#
@@ -122,7 +110,6 @@ def evaluate_window(window):
         score -= 10
 
     return score
-
 
 def evaluate_board(board):
     #-----------------------------------------------------------------------#
@@ -174,27 +161,28 @@ def evaluate_board(board):
     return score
 
 
-def minimax(board, depth, maximizing_player):
+def minimax(board, depth, maximizing_player, last_row=None, last_col=None):
+    valid_moves = get_valid_moves(board)
     #-----------------------------------------------------------------------#
     # Search future moves and return the best column and its score.
     # When maximizing_player is True, the yellow AI selects the highest score.
     # When it is False, Minimax assumes that the red player selects the lowest
     # score, meaning the best possible counter-move against the AI.
     #-----------------------------------------------------------------------#
-    
-    valid_moves = get_valid_moves(board)
-    ai_wins = check_winner(board, YELLOW)
-    player_wins = check_winner(board, RED)
+    if last_row is not None:
+        if maximizing_player:
+            last_player = RED
+        else:
+            last_player = YELLOW
+            
+        if check_winner(board, last_row, last_col, last_player):
+            if last_player == YELLOW:
+                return None, 1000000 + depth
+            else:
+                return None, -1000000 - depth
 
-    # Terminal positions stop the recursion immediately. An AI win receives a
-    # large positive score, while a human win receives a large negative score.
-    if ai_wins:
-        return None, 1000000
-    if player_wins:
-        return None, -1000000
     if len(valid_moves) == 0:
         return None, 0
-
     # If the depth limit is reached, use the heuristic instead of searching
     # the complete game all the way to the end.
     if depth == 0:
@@ -206,9 +194,9 @@ def minimax(board, depth, maximizing_player):
         best_col = valid_moves[0]
 
         for col in valid_moves:
-            new_board = make_move(board, col, YELLOW)
-            new_score = minimax(new_board, depth - 1, False)[1]
-
+            new_board, row = make_move(board, col, YELLOW)
+            new_score = minimax(new_board, depth - 1, False, row, col)[1]
+             
             if new_score > best_score:
                 best_score = new_score
                 best_col = col
@@ -221,8 +209,8 @@ def minimax(board, depth, maximizing_player):
         best_col = valid_moves[0]
 
         for col in valid_moves:
-            new_board = make_move(board, col, RED)
-            new_score = minimax(new_board, depth - 1, True)[1]
+            new_board, row = make_move(board, col, RED)
+            new_score = minimax(new_board, depth - 1, True, row, col)[1]
 
             if new_score < best_score:
                 best_score = new_score
@@ -231,7 +219,8 @@ def minimax(board, depth, maximizing_player):
         return best_col, best_score
 
 
-def get_best_move(board):
+def get_best_move(board, depth=DEPTH):
     """Start the Minimax search and return the column selected for the AI."""
-    best_col, score = minimax(board, DEPTH, True)
+    best_col, score = minimax(board, depth, True)
+    
     return best_col

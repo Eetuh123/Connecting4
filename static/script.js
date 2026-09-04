@@ -12,6 +12,7 @@ const turnText = document.getElementById('turnText');
 const turnDot = document.getElementById('turnDot');
 const resetBtn = document.getElementById('resetBtn');
 const moveCounter = document.getElementById('moveCounter');
+const diffButtons = document.querySelectorAll('.diff-choise');
 
 // API base URL
 const API_URL = window.location.origin;
@@ -164,6 +165,36 @@ function updateTurnIndicator(state) {
 function updateMoveCounter(count) {
     moveCounter.textContent = `Move ${count}`;
 }
+// Dificulty button highlight
+function updateDifficultyButtons(level) {
+    diffButtons.forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.level === level);
+    });
+}
+
+// Make Ai SMARTer
+function setDifficulty(level) {
+    if (moveInProgress) return;
+
+    fetch(`${API_URL}/api/difficulty`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ level: level })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.error) {
+            alert(data.error);
+            return;
+        }
+        updateDifficultyButtons(data.difficulty);
+    })
+    .catch(error => {
+        console.error('Error setting difficulty:', error);
+    });
+}
 
 // Load game state from server
 function loadGameState() {
@@ -177,6 +208,7 @@ function loadGameState() {
             renderBoard(board);
             updateTurnIndicator(data);
             updateMoveCounter(data.move_count);
+            updateDifficultyButtons(data.difficulty);
             setupHoverEvents();
             updateGameOverState();
         })
@@ -193,6 +225,7 @@ function makeMove(col) {
     // Lock the board until Flask returns both the human and AI moves
     moveInProgress = true;
     resetBtn.disabled = true;
+    diffButtons.forEach(btn => { btn.disabled = true; });
     clearPreview();
     turnText.textContent = 'AI is thinking...';
     turnDot.className = 'dot yellow';
@@ -229,6 +262,7 @@ function makeMove(col) {
         // Allow the human to click again after the request is complete
         moveInProgress = false;
         resetBtn.disabled = false;
+        diffButtons.forEach(btn => { btn.disabled = false; });
 
         if (!gameOver) {
             turnText.textContent = "Red's turn";
@@ -256,6 +290,7 @@ function resetGame() {
         renderBoard(board);
         updateTurnIndicator(data);
         updateMoveCounter(0);
+        updateDifficultyButtons(data.difficulty);
         clearPreview();
         setupHoverEvents();
         updateGameOverState();
@@ -280,6 +315,9 @@ function onBoardClick(e) {
 function init() {
     boardEl.addEventListener('click', onBoardClick);
     resetBtn.addEventListener('click', resetGame);
+    diffButtons.forEach(btn => {
+        btn.addEventListener('click', () => setDifficulty(btn.dataset.level));
+    });
     loadGameState();
 
     setInterval(() => {
