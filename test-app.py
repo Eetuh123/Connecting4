@@ -29,7 +29,9 @@ game_state = {
     'game_over': False,
     'winner': None,
     'move_count': 0,
-    'difficulty': 'medium'
+    'difficulty': 'medium',
+    'ai_move_scores': [],
+    'valid_moves': []
 }
 
 def reset_game():
@@ -39,6 +41,8 @@ def reset_game():
     game_state['game_over'] = False
     game_state['winner'] = None
     game_state['move_count'] = 0
+    game_state['ai_move_scores'] = []
+    game_state['valid_moves'] = []
 
 def is_board_full():
     """Check if the board is full"""
@@ -98,7 +102,9 @@ def reset():
         'current_player': game_state['current_player'],
         'game_over': game_state['game_over'],
         'winner': game_state['winner'],
-        'difficulty': game_state['difficulty']
+        'difficulty': game_state['difficulty'],
+        'ai_move_scores': game_state['ai_move_scores'],
+        'valid_moves': game_state['valid_moves']
     })
 
 @app.route('/api/difficulty', methods=['POST'])
@@ -160,7 +166,10 @@ def make_move():
     # get_best_move(), which uses Minimax to select a column for the AI.
     if not game_state['game_over'] and game_state['current_player'] == YELLOW:
         depth = DIFFICULTIES[game_state['difficulty']]
-        ai_col = get_best_move(game_state['board'], depth)
+        ai_col, ai_move_scores, valid_moves = get_best_move(game_state['board'], depth)
+        game_state['ai_move_scores'] = ai_move_scores
+        game_state['valid_moves'] = valid_moves
+
         if ai_col is not None:
             # Find the lowest empty row in the column selected by Minimax.
             ai_row = -1
@@ -195,6 +204,8 @@ def make_move():
         'game_over': game_state['game_over'],
         'winner': game_state['winner'],
         'move_count': game_state['move_count'],
+        'ai_move_scores': game_state['ai_move_scores'],
+        'valid_moves': game_state['valid_moves'],
         'difficulty': game_state['difficulty']
     })
 

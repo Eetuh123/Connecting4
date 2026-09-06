@@ -197,6 +197,21 @@ h1 {
     background: transparent;
     box-shadow: none;
 }
+/* Score label */
+.cell {
+    position: relative; /* needed so the score label can be positioned inside */
+}
+
+.score-label {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 0.75rem;
+    color: #14273f;
+    pointer-events: none; /* so it doesn't block clicks/hover on the cell */
+}
+
 
 /* Button */
 #resetBtn {

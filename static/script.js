@@ -25,27 +25,56 @@ function getCellClass(val) {
 }
 
 // Render board
-function renderBoard(boardData) {
+function renderBoard(boardData, aiMoveScores = null, validMoves = null) {
     const boardEl = document.getElementById('board');
     boardEl.innerHTML = '';
-    
+    const scoreByCol = {};
+    if (aiMoveScores && validMoves) {
+        validMoves.forEach((col, i) => {
+            scoreByCol[col] = aiMoveScores[i];
+        });
+    }
+
     for (let c = 0; c < 7; c++) {
         const column = document.createElement('div');
         column.className = 'column';
         column.dataset.col = c;
-        
+
+        let topEmptyRow = -1;
+        for (let r = 5; r >= 0; r--) {
+            if (boardData[r][c] === 0) {
+                topEmptyRow = r;
+                break;
+            }
+        }
+
+
+
         for (let r = 5; r >= 0; r--) {
             const cell = document.createElement('div');
             cell.className = 'cell';
-            if (boardData[r][c] === 1) cell.classList.add('red');
-            if (boardData[r][c] === 2) cell.classList.add('yellow');
             cell.dataset.row = r;
             cell.dataset.col = c;
+
+            if (boardData[r][c] === 1) cell.classList.add('red');
+            if (boardData[r][c] === 2) cell.classList.add('yellow');
+
+            if (r === topEmptyRow && scoreByCol[c] !== undefined) {
+                const score = scoreByCol[c];
+                cell.dataset.score = score;
+                cell.title = `AI Score: ${score}`;
+
+                const scoreLabel = document.createElement('span');
+                scoreLabel.className = 'score-label';
+                scoreLabel.textContent = score;
+                cell.appendChild(scoreLabel);
+            }
+
             column.appendChild(cell);
         }
         boardEl.appendChild(column);
     }
-    
+
     setupHoverEvents();
     updateGameOverState(); // Update game over styling
 }
@@ -247,7 +276,7 @@ function makeMove(col) {
         currentPlayer = data.current_player;
         gameOver = data.game_over;
         moveCount = data.move_count;
-        renderBoard(board);
+        renderBoard(board, data.ai_move_scores, data.valid_moves);
         updateTurnIndicator(data);
         updateMoveCounter(data.move_count);
         clearPreview();

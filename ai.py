@@ -196,7 +196,6 @@ def minimax(board, depth, maximizing_player, last_row=None, last_col=None):
         for col in valid_moves:
             new_board, row = make_move(board, col, YELLOW)
             new_score = minimax(new_board, depth - 1, False, row, col)[1]
-             
             if new_score > best_score:
                 best_score = new_score
                 best_col = col
@@ -220,7 +219,15 @@ def minimax(board, depth, maximizing_player, last_row=None, last_col=None):
 
 
 def get_best_move(board, depth=DEPTH):
-    """Start the Minimax search and return the column selected for the AI."""
-    best_col, score = minimax(board, depth, True)
-    
-    return best_col
+    valid_moves = get_valid_moves(board)
+    ai_move_scores = [0] * len(valid_moves)
+
+    for i, col in enumerate(valid_moves):
+        new_board, row = make_move(board, col, YELLOW)
+        score = minimax(new_board, depth - 1, False, row, col)[1]
+        ai_move_scores[i] = score
+
+    best_i = ai_move_scores.index(max(ai_move_scores))
+    best_col = valid_moves[best_i]
+
+    return best_col, ai_move_scores, valid_moves
