@@ -10,7 +10,6 @@
 # but for now it's 4 to maintain efficient speed and inteligence at the same time
 #----------------------------------------------------------------------------------#
 
-
 # The values must match the constants used in app.py.
 ROWS = 6
 COLS = 7
@@ -19,9 +18,10 @@ RED = 1
 YELLOW = 2
 
 # Searching the complete Connect 4 game tree would take too long. Therefore,
-# the AI searches four moves ahead and then evaluates the resulting position.
-DEPTH = 4
-
+# the AI searches four moves (DEPTH = 4) ahead and then evaluates the resulting position.
+# Without pruning depth 8 takes about 12 seconds (Lvl 100 mafia boss)
+# With pruning about 1 second
+DEPTH = 8
 
 def get_valid_moves(board):
     """Return a list containing every column that still has an empty space."""
@@ -32,7 +32,6 @@ def get_valid_moves(board):
             valid_moves.append(col)
 
     return valid_moves
-
 
 def make_move(board, col, player):
     #-----------------------------------------------------------------------#
@@ -118,7 +117,6 @@ def evaluate_board(board):
     # The function evaluates the center column and every possible horizontal,
     # vertical and diagonal group of four positions.
     #-----------------------------------------------------------------------#
-
     score = 0
 
     # The center is useful because it belongs to more possible winning lines.
@@ -160,8 +158,7 @@ def evaluate_board(board):
 
     return score
 
-
-def minimax(board, depth, maximizing_player, last_row=None, last_col=None):
+def minimax(board, depth, maximizing_player, alpha=float('-inf'), beta=float('inf'), last_row=None, last_col=None):
     valid_moves = get_valid_moves(board)
     #-----------------------------------------------------------------------#
     # Search future moves and return the best column and its score.
@@ -181,6 +178,7 @@ def minimax(board, depth, maximizing_player, last_row=None, last_col=None):
             else:
                 return None, -1000000 - depth
 
+    # No moves left = draw
     if len(valid_moves) == 0:
         return None, 0
     # If the depth limit is reached, use the heuristic instead of searching
@@ -195,10 +193,15 @@ def minimax(board, depth, maximizing_player, last_row=None, last_col=None):
 
         for col in valid_moves:
             new_board, row = make_move(board, col, YELLOW)
-            new_score = minimax(new_board, depth - 1, False, row, col)[1]
+            new_score = minimax(new_board, depth - 1, False, alpha, beta, row, col)[1]
             if new_score > best_score:
                 best_score = new_score
                 best_col = col
+
+            # Alpha is the best score Yellow guarantees
+            alpha = max(alpha, best_score)
+            # Red has a better option = prune
+            if alpha >= beta: break
 
         return best_col, best_score
 
@@ -209,23 +212,33 @@ def minimax(board, depth, maximizing_player, last_row=None, last_col=None):
 
         for col in valid_moves:
             new_board, row = make_move(board, col, RED)
-            new_score = minimax(new_board, depth - 1, True, row, col)[1]
+            new_score = minimax(new_board, depth - 1, True, alpha, beta, row, col)[1]
 
             if new_score < best_score:
                 best_score = new_score
                 best_col = col
 
-        return best_col, best_score
+            # Beta is the best score Red guarantees
+            beta = min(beta, best_score)
+            # Yellow has a better option = prune
+            if alpha >= beta: break
 
+        return best_col, best_score
 
 def get_best_move(board, depth=DEPTH):
     valid_moves = get_valid_moves(board)
     ai_move_scores = [0] * len(valid_moves)
 
+    alpha = float('-inf')
+    beta = float('inf')
+
     for i, col in enumerate(valid_moves):
         new_board, row = make_move(board, col, YELLOW)
-        score = minimax(new_board, depth - 1, False, row, col)[1]
+        score = minimax(new_board, depth - 1, False, alpha, beta, row, col)[1]
         ai_move_scores[i] = score
+
+        # Update after evaluation
+        alpha = max(alpha, score)
 
     best_i = ai_move_scores.index(max(ai_move_scores))
     best_col = valid_moves[best_i]
