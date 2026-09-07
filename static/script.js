@@ -12,7 +12,7 @@ const turnText = document.getElementById('turnText');
 const turnDot = document.getElementById('turnDot');
 const resetBtn = document.getElementById('resetBtn');
 const moveCounter = document.getElementById('moveCounter');
-const diffButtons = document.querySelectorAll('.diff-choise');
+const diffButtons = document.querySelectorAll('.diff-choice');
 
 // API base URL
 const API_URL = window.location.origin;
@@ -48,8 +48,6 @@ function renderBoard(boardData, aiMoveScores = null, validMoves = null) {
             }
         }
 
-
-
         for (let r = 5; r >= 0; r--) {
             const cell = document.createElement('div');
             cell.className = 'cell';
@@ -72,6 +70,7 @@ function renderBoard(boardData, aiMoveScores = null, validMoves = null) {
 
             column.appendChild(cell);
         }
+
         boardEl.appendChild(column);
     }
 
@@ -191,9 +190,8 @@ function updateTurnIndicator(state) {
 }
 
 // Update move counter
-function updateMoveCounter(count) {
-    moveCounter.textContent = `Move ${count}`;
-}
+function updateMoveCounter(count) { moveCounter.textContent = `Move ${count}`; }
+
 // Dificulty button highlight
 function updateDifficultyButtons(level) {
     diffButtons.forEach(btn => {
