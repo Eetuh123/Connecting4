@@ -25,7 +25,7 @@ function getCellClass(val) {
 }
 
 // Render board
-function renderBoard(boardData, aiMoveScores = null, validMoves = null) {
+function renderBoard(boardData, aiMoveScores = null, validMoves = null, aiMove = null) {
     const boardEl = document.getElementById('board');
     boardEl.innerHTML = '';
     const scoreByCol = {};
@@ -40,11 +40,16 @@ function renderBoard(boardData, aiMoveScores = null, validMoves = null) {
         column.className = 'column';
         column.dataset.col = c;
 
-        let topEmptyRow = -1;
-        for (let r = 5; r >= 0; r--) {
-            if (boardData[r][c] === 0) {
-                topEmptyRow = r;
-                break;
+        let scoreRow;
+        if (aiMove && aiMove.col === c) {
+            scoreRow = aiMove.row;
+        } else {
+            scoreRow = -1;
+            for (let r = 5; r >= 0; r--) {
+                if (boardData[r][c] === 0) {
+                    scoreRow = r;
+                    break;
+                }
             }
         }
 
@@ -57,7 +62,7 @@ function renderBoard(boardData, aiMoveScores = null, validMoves = null) {
             if (boardData[r][c] === 1) cell.classList.add('red');
             if (boardData[r][c] === 2) cell.classList.add('yellow');
 
-            if (r === topEmptyRow && scoreByCol[c] !== undefined) {
+            if (r === scoreRow && scoreByCol[c] !== undefined) {
                 const score = scoreByCol[c];
                 cell.dataset.score = score;
                 cell.title = `AI Score: ${score}`;
@@ -249,13 +254,11 @@ function loadGameState() {
 function makeMove(col) {
     if (gameOver || moveInProgress) return;
 
-    // Lock the board until Flask returns both the human and AI moves
+    // Lock the board while the human move is submitted and rendered
     moveInProgress = true;
     resetBtn.disabled = true;
     diffButtons.forEach(btn => { btn.disabled = true; });
     clearPreview();
-    turnText.textContent = 'AI is thinking...';
-    turnDot.className = 'dot yellow';
 
     fetch(`${API_URL}/api/move`, {
         method: 'POST',
@@ -268,13 +271,55 @@ function makeMove(col) {
     .then(data => {
         if (data.error) {
             alert(data.error);
+            unlockBoard();
             return;
         }
         board = data.board;
         currentPlayer = data.current_player;
         gameOver = data.game_over;
         moveCount = data.move_count;
-        renderBoard(board, data.ai_move_scores, data.valid_moves);
+
+        // Show the human's piece before the AI takes its turn
+        renderBoard(board);
+        updateTurnIndicator(data);
+        updateMoveCounter(data.move_count);
+        setupHoverEvents();
+        updateGameOverState();
+
+        if (!gameOver && currentPlayer === 2) {
+            turnText.textContent = 'AI is thinking...';
+            turnDot.className = 'dot yellow';
+            requestAiMove();
+        } else {
+            unlockBoard();
+        }
+    })
+    .catch(error => {
+        console.error('Error making move:', error);
+        alert('Failed to make move. Please try again.');
+        unlockBoard();
+    });
+}
+
+// Ask the server for the AI's move, once the human move is already on screen
+function requestAiMove() {
+    fetch(`${API_URL}/api/ai-move`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.error) {
+            alert(data.error);
+            return;
+        }
+        board = data.board;
+        currentPlayer = data.current_player;
+        gameOver = data.game_over;
+        moveCount = data.move_count;
+        renderBoard(board, data.ai_move_scores, data.valid_moves, { row: data.row, col: data.col });
         updateTurnIndicator(data);
         updateMoveCounter(data.move_count);
         clearPreview();
@@ -282,20 +327,24 @@ function makeMove(col) {
         updateGameOverState();
     })
     .catch(error => {
-        console.error('Error making move:', error);
-        alert('Failed to make move. Please try again.');
+        console.error('Error getting AI move:', error);
+        alert('Failed to get AI move. Please try again.');
     })
     .finally(() => {
-        // Allow the human to click again after the request is complete
-        moveInProgress = false;
-        resetBtn.disabled = false;
-        diffButtons.forEach(btn => { btn.disabled = false; });
-
-        if (!gameOver) {
-            turnText.textContent = "Red's turn";
-            turnDot.className = 'dot red';
-        }
+        unlockBoard();
     });
+}
+
+// Re-enable input after a full turn (human + AI) is complete
+function unlockBoard() {
+    moveInProgress = false;
+    resetBtn.disabled = false;
+    diffButtons.forEach(btn => { btn.disabled = false; });
+
+    if (!gameOver) {
+        turnText.textContent = "Red's turn";
+        turnDot.className = 'dot red';
+    }
 }
 
 // Reset the game

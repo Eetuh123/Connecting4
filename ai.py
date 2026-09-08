@@ -21,7 +21,6 @@ YELLOW = 2
 # the AI searches four moves (DEPTH = 4) ahead and then evaluates the resulting position.
 # Without pruning depth 8 takes about 12 seconds (Lvl 100 mafia boss)
 # With pruning about 1 second
-DEPTH = 8
 
 def get_valid_moves(board):
     """Return a list containing every column that still has an empty space."""
@@ -225,7 +224,7 @@ def minimax(board, depth, maximizing_player, alpha=float('-inf'), beta=float('in
 
         return best_col, best_score
 
-def get_best_move(board, depth=DEPTH):
+def get_best_move(board, depth):
     valid_moves = get_valid_moves(board)
     ai_move_scores = [0] * len(valid_moves)
 

@@ -19,7 +19,7 @@ YELLOW = 2
 DIFFICULTIES = {
     'easy': 2,
     'medium': 4,
-    'hard': 6
+    'hard': 8
 }
 
 # Game state (in-memory for simplicity)
@@ -124,7 +124,7 @@ def make_move():
     """Make a move in the game"""
     data = request.get_json()
     col = data.get('col')
-    
+     
     if col is None or col < 0 or col >= COLS:
         return jsonify({'error': 'Invalid column'}), 400
     
@@ -161,44 +161,63 @@ def make_move():
     if not game_state['game_over']:
         game_state['current_player'] = YELLOW if player == RED else RED
 
-    # AI MOVE
-    # After the human move, current_player is YELLOW. The board is sent to
-    # get_best_move(), which uses Minimax to select a column for the AI.
-    if not game_state['game_over'] and game_state['current_player'] == YELLOW:
-        depth = DIFFICULTIES[game_state['difficulty']]
-        ai_col, ai_move_scores, valid_moves = get_best_move(game_state['board'], depth)
-        game_state['ai_move_scores'] = ai_move_scores
-        game_state['valid_moves'] = valid_moves
-
-        if ai_col is not None:
-            # Find the lowest empty row in the column selected by Minimax.
-            ai_row = -1
-            for r in range(ROWS - 1, -1, -1):
-                if game_state['board'][r][ai_col] == EMPTY:
-                    ai_row = r
-                    break
-
-            # Place the yellow AI token on the real game board.
-            game_state['board'][ai_row][ai_col] = YELLOW
-            game_state['move_count'] += 1
-
-            # Check whether the AI move ended the game.
-            if check_win(ai_row, ai_col, YELLOW):
-                game_state['game_over'] = True
-                game_state['winner'] = YELLOW
-            elif is_board_full():
-                game_state['game_over'] = True
-                game_state['winner'] = 0  # Draw
-
-            # If the game continues, the next API request will be a human move.
-            if not game_state['game_over']:
-                game_state['current_player'] = RED
-    
     return jsonify({
         'success': True,
         'row': row,
         'col': col,
         'player': player,
+        'board': game_state['board'],
+        'current_player': game_state['current_player'],
+        'game_over': game_state['game_over'],
+        'winner': game_state['winner'],
+        'move_count': game_state['move_count'],
+        'difficulty': game_state['difficulty']
+    })
+
+@app.route('/api/ai-move', methods=['POST'])
+def ai_move():
+    """Let the AI take its turn. Called separately after the human move has
+    already been rendered, so the player sees their own piece drop before
+    the AI 'thinks'."""
+    if game_state['game_over']:
+        return jsonify({'error': 'Game is over'}), 400
+
+    if game_state['current_player'] != YELLOW:
+        return jsonify({'error': 'Not AI turn'}), 400
+
+    depth = DIFFICULTIES[game_state['difficulty']]
+    ai_col, ai_move_scores, valid_moves = get_best_move(game_state['board'], depth)
+    game_state['ai_move_scores'] = ai_move_scores
+    game_state['valid_moves'] = valid_moves
+
+    ai_row = None
+    if ai_col is not None:
+        # Find the lowest empty row in the column selected by Minimax.
+        for r in range(ROWS - 1, -1, -1):
+            if game_state['board'][r][ai_col] == EMPTY:
+                ai_row = r
+                break
+
+        # Place the yellow AI token on the real game board.
+        game_state['board'][ai_row][ai_col] = YELLOW
+        game_state['move_count'] += 1
+
+        # Check whether the AI move ended the game.
+        if check_win(ai_row, ai_col, YELLOW):
+            game_state['game_over'] = True
+            game_state['winner'] = YELLOW
+        elif is_board_full():
+            game_state['game_over'] = True
+            game_state['winner'] = 0  # Draw
+
+        # If the game continues, the next API request will be a human move.
+        if not game_state['game_over']:
+            game_state['current_player'] = RED
+
+    return jsonify({
+        'success': True,
+        'row': ai_row,
+        'col': ai_col,
         'board': game_state['board'],
         'current_player': game_state['current_player'],
         'game_over': game_state['game_over'],
