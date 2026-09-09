@@ -211,6 +211,30 @@ h1 {
     pointer-events: none; /* so it doesn't block clicks/hover on the cell */
 }
 
+.score-bound {
+    opacity: 0.6;
+    font-style: italic;
+    background: repeating-linear-gradient(
+        45deg,
+        rgba(20, 39, 63, 0.15),
+        rgba(20, 39, 63, 0.15) 3px,
+        transparent 3px,
+        transparent 6px
+    );
+    border-radius: 4px;
+    padding: 0 2px;
+}
+
+/* Search stats */
+.search-stats {
+    color: #f4f4f4;
+    font-size: 0.75rem;
+    text-align: center;
+    margin-top: 0.3rem;
+    letter-spacing: 0.5px;
+    opacity: 0.6;
+}
+
 /* Button */
 #resetBtn {
     background: #d8dee5;

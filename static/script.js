@@ -12,6 +12,7 @@ const turnText = document.getElementById('turnText');
 const turnDot = document.getElementById('turnDot');
 const resetBtn = document.getElementById('resetBtn');
 const moveCounter = document.getElementById('moveCounter');
+const searchStats = document.getElementById('searchStats');
 const diffButtons = document.querySelectorAll('.diff-choice');
 
 // API base URL
@@ -25,13 +26,15 @@ function getCellClass(val) {
 }
 
 // Render board
-function renderBoard(boardData, aiMoveScores = null, validMoves = null, aiMove = null) {
+function renderBoard(boardData, aiMoveScores = null, validMoves = null, aiMove = null, scoreIsExact = null) {
     const boardEl = document.getElementById('board');
     boardEl.innerHTML = '';
     const scoreByCol = {};
+    const exactByCol = {};
     if (aiMoveScores && validMoves) {
         validMoves.forEach((col, i) => {
             scoreByCol[col] = aiMoveScores[i];
+            exactByCol[col] = scoreIsExact ? scoreIsExact[i] : true;
         });
     }
 
@@ -64,12 +67,18 @@ function renderBoard(boardData, aiMoveScores = null, validMoves = null, aiMove =
 
             if (r === scoreRow && scoreByCol[c] !== undefined) {
                 const score = scoreByCol[c];
+                const isExact = exactByCol[c];
                 cell.dataset.score = score;
-                cell.title = `AI Score: ${score}`;
+
+                // A bound means alpha-beta cut this column's search short;
+                // the true minimax value could still be lower than shown.
+                cell.title = isExact
+                    ? `AI Score: ${score} (exact)`
+                    : `AI Score: ≤ ${score} (upper bound - search was pruned here, true value may be lower)`;
 
                 const scoreLabel = document.createElement('span');
-                scoreLabel.className = 'score-label';
-                scoreLabel.textContent = score;
+                scoreLabel.className = isExact ? 'score-label' : 'score-label score-bound';
+                scoreLabel.textContent = isExact ? score : `≤${score}`;
                 cell.appendChild(scoreLabel);
             }
 
@@ -197,6 +206,18 @@ function updateTurnIndicator(state) {
 // Update move counter
 function updateMoveCounter(count) { moveCounter.textContent = `Move ${count}`; }
 
+// Show how much of the game tree the AI searched for its last move
+function updateSearchStats(stats) {
+    if (!searchStats) return;
+    if (!stats) {
+        searchStats.textContent = '';
+        return;
+    }
+    const nodes = stats.nodes.toLocaleString();
+    const ms = stats.elapsed_ms.toFixed(0);
+    searchStats.textContent = `Searched ${nodes} nodes in ${ms} ms`;
+}
+
 // Dificulty button highlight
 function updateDifficultyButtons(level) {
     diffButtons.forEach(btn => {
@@ -319,9 +340,10 @@ function requestAiMove() {
         currentPlayer = data.current_player;
         gameOver = data.game_over;
         moveCount = data.move_count;
-        renderBoard(board, data.ai_move_scores, data.valid_moves, { row: data.row, col: data.col });
+        renderBoard(board, data.ai_move_scores, data.valid_moves, { row: data.row, col: data.col }, data.score_is_exact);
         updateTurnIndicator(data);
         updateMoveCounter(data.move_count);
+        updateSearchStats(data.stats);
         clearPreview();
         setupHoverEvents();
         updateGameOverState();
@@ -366,6 +388,7 @@ function resetGame() {
         renderBoard(board);
         updateTurnIndicator(data);
         updateMoveCounter(0);
+        updateSearchStats(null);
         updateDifficultyButtons(data.difficulty);
         clearPreview();
         setupHoverEvents();

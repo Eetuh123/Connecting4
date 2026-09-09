@@ -31,7 +31,9 @@ game_state = {
     'move_count': 0,
     'difficulty': 'medium',
     'ai_move_scores': [],
-    'valid_moves': []
+    'score_is_exact': [],
+    'valid_moves': [],
+    'stats': {'nodes': 0, 'elapsed_ms': 0}
 }
 
 def reset_game():
@@ -42,7 +44,9 @@ def reset_game():
     game_state['winner'] = None
     game_state['move_count'] = 0
     game_state['ai_move_scores'] = []
+    game_state['score_is_exact'] = []
     game_state['valid_moves'] = []
+    game_state['stats'] = {'nodes': 0, 'elapsed_ms': 0}
 
 def is_board_full():
     """Check if the board is full"""
@@ -104,7 +108,9 @@ def reset():
         'winner': game_state['winner'],
         'difficulty': game_state['difficulty'],
         'ai_move_scores': game_state['ai_move_scores'],
-        'valid_moves': game_state['valid_moves']
+        'score_is_exact': game_state['score_is_exact'],
+        'valid_moves': game_state['valid_moves'],
+        'stats': game_state['stats']
     })
 
 @app.route('/api/difficulty', methods=['POST'])
@@ -186,9 +192,11 @@ def ai_move():
         return jsonify({'error': 'Not AI turn'}), 400
 
     depth = DIFFICULTIES[game_state['difficulty']]
-    ai_col, ai_move_scores, valid_moves = get_best_move(game_state['board'], depth)
+    ai_col, ai_move_scores, score_is_exact, valid_moves, stats = get_best_move(game_state['board'], depth)
     game_state['ai_move_scores'] = ai_move_scores
+    game_state['score_is_exact'] = score_is_exact
     game_state['valid_moves'] = valid_moves
+    game_state['stats'] = stats
 
     ai_row = None
     if ai_col is not None:
@@ -224,7 +232,9 @@ def ai_move():
         'winner': game_state['winner'],
         'move_count': game_state['move_count'],
         'ai_move_scores': game_state['ai_move_scores'],
+        'score_is_exact': game_state['score_is_exact'],
         'valid_moves': game_state['valid_moves'],
+        'stats': game_state['stats'],
         'difficulty': game_state['difficulty']
     })
 

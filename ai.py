@@ -9,6 +9,7 @@
 # After adding Alpha-Beta Pruning the search limit can be increased,
 # but for now it's 4 to maintain efficient speed and inteligence at the same time
 #----------------------------------------------------------------------------------#
+import time
 
 # The values must match the constants used in app.py.
 ROWS = 6
@@ -16,6 +17,8 @@ COLS = 7
 EMPTY = 0
 RED = 1
 YELLOW = 2
+
+NODE_COUNT = 0
 
 # Searching the complete Connect 4 game tree would take too long. Therefore,
 # the AI searches four moves (DEPTH = 4) ahead and then evaluates the resulting position.
@@ -30,6 +33,7 @@ def get_valid_moves(board):
         if board[0][col] == EMPTY:
             valid_moves.append(col)
 
+    valid_moves.sort(key=lambda c: abs(c - COLS // 2))
     return valid_moves
 
 def make_move(board, col, player):
@@ -158,6 +162,9 @@ def evaluate_board(board):
     return score
 
 def minimax(board, depth, maximizing_player, alpha=float('-inf'), beta=float('inf'), last_row=None, last_col=None):
+    global NODE_COUNT
+    NODE_COUNT += 1
+
     valid_moves = get_valid_moves(board)
     #-----------------------------------------------------------------------#
     # Search future moves and return the best column and its score.
@@ -225,8 +232,13 @@ def minimax(board, depth, maximizing_player, alpha=float('-inf'), beta=float('in
         return best_col, best_score
 
 def get_best_move(board, depth):
+    global NODE_COUNT
+    NODE_COUNT = 0
+    start_time = time.perf_counter()
+
     valid_moves = get_valid_moves(board)
     ai_move_scores = [0] * len(valid_moves)
+    score_is_exact = [True] * len(valid_moves)
 
     alpha = float('-inf')
     beta = float('inf')
@@ -235,11 +247,14 @@ def get_best_move(board, depth):
         new_board, row = make_move(board, col, YELLOW)
         score = minimax(new_board, depth - 1, False, alpha, beta, row, col)[1]
         ai_move_scores[i] = score
+        score_is_exact[i] = score > alpha
 
-        # Update after evaluation
         alpha = max(alpha, score)
 
     best_i = ai_move_scores.index(max(ai_move_scores))
     best_col = valid_moves[best_i]
 
-    return best_col, ai_move_scores, valid_moves
+    elapsed_ms = (time.perf_counter() - start_time) * 1000
+    stats = {'nodes': NODE_COUNT, 'elapsed_ms': elapsed_ms}
+
+    return best_col, ai_move_scores, score_is_exact, valid_moves, stats
